@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>ZB-HOST | Ultimate Multi-User Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0f0f1a 100%);
+            min-height: 100vh;
+        }
+        
+        .glass-card {
+            background: rgba(15, 25, 35, 0.65);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .glass-card:hover {
+            border-color: rgba(139, 92, 246, 0.6);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px -10px rgba(139, 92, 246, 0.3);
+        }
+        
+        .glow-input {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .glow-input:focus {
+            border-color: #8b5cf6;
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+            outline: none;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px -10px #8b5cf6;
+        }
+        
+        .status-badge::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        
+        .status-running::before { background: #10b981; box-shadow: 0 0 8px #10b981; animation: pulse 2s infinite; }
+        .status-stopped::before { background: #ef4444; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1100;
+            background: #1e293b;
+            border-left: 3px solid #8b5cf6;
+            padding: 12px 20px;
+            border-radius: 12px;
+            animation: slideIn 0.3s ease;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.95);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .custom-scroll::-webkit-scrollbar { width: 5px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #1e293b; border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #8b5cf6; border-radius: 10px; }
+        
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 260px;
+            background: rgba(10, 20, 30, 0.95);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(139, 92, 246, 0.3);
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 200;
+        }
+        
+        .sidebar.open {
+            transform: translateX(0);
+        }
+        
+        .sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 199;
+            display: none;
+        }
+        
+        .sidebar-overlay.open {
+            display: block;
+        }
+        
+        @media (min-width: 768px) {
+            .sidebar {
+                transform: translateX(0);
+                position: sticky;
+                top: 0;
+                height: 100vh;
+            }
+            .sidebar-overlay { display: none !important; }
+            .menu-btn { display: none; }
+        }
+        
+        .upload-progress {
+            height: 3px;
+            background: #1e293b;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .upload-progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #8b5cf6, #6366f1);
+            transition: width 0.3s ease;
+        }
+        
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #8b5cf6, #6366f1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: bold;
+            margin: 0 auto;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .avatar:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+        }
+        
+        .user-bot-card {
+            background: rgba(15, 25, 35, 0.6);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        
+        .favorite-star {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .favorite-star:hover {
+            transform: scale(1.1);
+        }
+        
+        .api-key {
+            font-family: monospace;
+            font-size: 10px;
+            background: rgba(0,0,0,0.4);
+            padding: 5px 10px;
+            border-radius: 8px;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ==================== LOGIN PAGE ==================== -->
+<div id="loginPage" class="min-h-screen flex items-center justify-center p-5">
+    <div class="glass-card rounded-3xl p-8 md:p-12 w-full max-w-[450px]">
+        <div class="text-center mb-8">
+            <div class="w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl">
+                <i class="fa-solid fa-bolt text-3xl text-white"></i>
+            </div>
+            <h1 class="text-3xl font-black text-white tracking-tighter font-['Orbitron']">ZB-HOST</h1>
+            <p class="text-purple-400 text-[10px] font-bold uppercase tracking-[0.3em] mt-2">Multi-User Commander Panel</p>
+        </div>
+        
+        <div id="loginError" class="hidden bg-red-500/20 border border-red-500/50 text-red-400 p-3 rounded-xl mb-6 text-[12px] font-bold text-center"></div>
+        
+        <form id="loginForm" class="space-y-4">
+            <div>
+                <label class="text-[11px] font-bold uppercase tracking-wider text-purple-400 block mb-2">Username</label>
+                <div class="relative">
+                    <i class="fa-solid fa-user absolute left-4 top-1/2 -translate-y-1/2 text-purple-500 text-sm"></i>
+                    <input type="text" id="loginUsername" required class="glow-input w-full py-3 pl-11 pr-4 rounded-xl text-white text-sm" placeholder="Enter username">
+                </div>
+            </div>
+            
+            <div>
+                <label class="text-[11px] font-bold uppercase tracking-wider text-purple-400 block mb-2">Password</label>
+                <div class="relative">
+                    <i class="fa-solid fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-purple-500 text-sm"></i>
+                    <input type="password" id="loginPassword" required class="glow-input w-full py-3 pl-11 pr-4 rounded-xl text-white text-sm" placeholder="Enter password">
+                    <i class="fa-solid fa-eye absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 cursor-pointer hover:text-purple-400" onclick="togglePassword(this)"></i>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn-primary w-full py-3 rounded-xl text-white font-bold uppercase tracking-wider text-sm flex items-center justify-center gap-2">
+                <i class="fa-solid fa-arrow-right-to-bracket"></i> Login
+            </button>
+        </form>
+        
+        <div class="mt-6 text-center">
+            <p class="text-slate-500 text-[11px] font-bold uppercase">Don't have an account? <a href="#" onclick="showSignup()" class="text-purple-400 hover:text-purple-300 transition">Sign Up</a></p>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SIGNUP PAGE ==================== -->
+<div id="signupPage" class="min-h-screen flex items-center justify-center p-5" style="display: none;">
+    <div class="glass-card rounded-3xl p-8 md:p-12 w-full max-w-[450px]">
+        <div class="text-center mb-8">
+            <div class="w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl">
+                <i class="fa-solid fa-user-plus text-3xl text-white"></i>
+            </div>
+            <h1 class="text-3xl font-black text-white tracking-tighter font-['Orbitron']">Create Account</h1>
+            <p class="text-purple-400 text-[10px] font-bold uppercase tracking-[0.3em] mt-2">Join ZB-HOST</p>
+        </div>
+        
+        <div id="signupError" class="hidden bg-red-500/20 border border-red-500/50 text-red-400 p-3 rounded-xl mb-6 text-[12px] font-bold text-center"></div>
+        <div id="signupSuccess" class="hidden bg-green-500/20 border border-green-500/50 text-green-400 p-3 rounded-xl mb-6 text-[12px] font-bold text-center"></div>
+        
+        <form id="signupFormElement" class="space-y-3">
+            <div>
+                <label class="text-[11px] font-bold uppercase tracking-wider text-purple-400 block mb-2">Username</label>
+                <input type="text" id="signupUsername" placeholder="Choose username" required class="glow-input w-full py-3 px-4 rounded-xl text-white text-sm">
+            </div>
+            
+            <div>
+                <label class="text-[11px] font-bold uppercase tracking-wider text-purple-400 block mb-2">Email</label>
+                <input type="email" id="signupEmail" placeholder="your@email.com" required class="glow-input w-full py-3 px-4 rounded-xl text-white text-sm">
+            </div>
+            
+            <div>
+                <label class="text-[11px] font-bold uppercase tracking-wider text-purple-400 block mb-2">Display Name</label>
+                <input type="text" id="signupDisplayName" placeholder="How should we call you?" class="glow-input w-full py-3 px-4 rounded-xl text-white text-sm">
+            </div>
+            
+            <div>
+                <label class="text-[11px] font-bold uppercase tracking-wider text-purple-400 block mb-2">Password</label>
+                <input type="password" id="signupPassword" placeholder="Create password" required class="glow-input w-full py-3 px-4 rounded-xl text-white text-sm">
+                <div class="flex gap-1 mt-2">
+                    <div class="flex-1 h-1 rounded-full bg-slate-700" id="strength1"></div>
+                    <div class="flex-1 h-1 rounded-full bg-slate-700" id="strength2"></div>
+                    <div class="flex-1 h-1 rounded-full bg-slate-700" id="strength3"></div>
+                    <div class="flex-1 h-1 rounded-full bg-slate-700" id="strength4"></div>
+                </div>
+            </div>
+            
+            <div>
+                <label class="text-[11px] font-bold uppercase tracking-wider text-purple-400 block mb-2">Confirm Password</label>
+                <input type="password" id="signupConfirm" placeholder="Confirm password" required class="glow-input w-full py-3 px-4 rounded-xl text-white text-sm">
+            </div>
+            
+            <button type="submit" class="btn-primary w-full py-3 rounded-xl text-white font-bold uppercase tracking-wider text-sm flex items-center justify-center gap-2">
+                <i class="fa-solid fa-circle-check"></i> Sign Up
+            </button>
+        </form>
+        
+        <div class="mt-6 text-center">
+            <p class="text-slate-500 text-[11px] font-bold uppercase">Already have account? <a href="#" onclick="showLogin()" class="text-purple-400 hover:text-purple-300 transition">Login</a></p>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== DASHBOARD (USER + ADMIN) ==================== -->
+<div id="dashboard" style="display: none;">
+    <!-- Sidebar -->
+    <div id="sidebarOverlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
+    <div id="sidebar" class="sidebar p-5 flex flex-col">
+        <div class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-lg flex items-center justify-center">
+                    <i class="fa-solid fa-bolt text-white text-sm"></i>
+                </div>
+                <h2 class="text-lg font-black text-white font-['Orbitron']">ZB-HOST</h2>
+            </div>
+            <button onclick="closeSidebar()" class="menu-btn text-slate-400 hover:text-white md:hidden"><i class="fa-solid fa-times text-xl"></i></button>
+        </div>
+        
+        <nav class="flex-1 space-y-1">
+            <div onclick="showPage('dashboard')" class="sidebar-item active px-4 py-3 rounded-xl flex items-center gap-3 cursor-pointer bg-purple-600/20 text-purple-400">
+                <i class="fa-solid fa-chart-line w-5"></i><span class="text-sm font-bold">Dashboard</span>
+            </div>
+            <div onclick="showPage('bots')" class="sidebar-item px-4 py-3 rounded-xl flex items-center gap-3 cursor-pointer text-slate-400 hover:bg-white/10">
+                <i class="fa-solid fa-robot w-5"></i><span class="text-sm">My Bots</span>
+            </div>
+            <div onclick="showPage('filemanager')" class="sidebar-item px-4 py-3 rounded-xl flex items-center gap-3 cursor-pointer text-slate-400 hover:bg-white/10">
+                <i class="fa-solid fa-folder-open w-5"></i><span class="text-sm">File Manager</span>
+            </div>
+            <div onclick="showPage('templates')" class="sidebar-item px-4 py-3 rounded-xl flex items-center gap-3 cursor-pointer text-slate-400 hover:bg-white/10">
+                <i class="fa-solid fa-copy w-5"></i><span class="text-sm">Templates</span>
+            </div>
+            <div onclick="showPage('scheduler')" class="sidebar-item px-4 py-3 rounded-xl flex items-center gap-3 cursor-pointer text-slate-400 hover:bg-white/10">
+                <i class="fa-solid fa-calendar-alt w-5"></i><span class="text-sm">Scheduler</span>
+            </div>
+            <div onclick="showPage('analytics')" class="sidebar-item px-4 py-3 rounded-xl flex items-center gap-3 cursor-pointer text-slate-400 hover:bg-white/10">
+                <i class="fa-solid fa-chart-simple w-5"></i><span class="text-sm">Analytics</span>
+            </div>
+            <div onclick="showPage('favorites')" class="sidebar-item px-4 py-3 rounded-xl flex items-center gap-3 cursor-pointer text-slate-400 hover:bg-white/10">
+                <i class="fa-solid fa-star w-5"></i><span class="text-sm">Favorites</span>
+            </div>
+            <div onclick="showPage('apikeys')" class="sidebar-item px-4 py-3 rounded-xl flex items-center gap-3 cursor-pointer text-slate-400 hover:bg-white/10">
+                <i class="fa-solid fa-key w-5"></i><span class="text-sm">API Keys</span>
+            </div>
+            <div onclick="showPage('notes')" class="sidebar-item px-4 py-3 rounded-xl flex items-center gap-3 cursor-pointer text-slate-400 hover:bg-white/10">
+                <i class="fa-solid fa-note-sticky w-5"></i><span class="text-sm">Notes</span>
+            </div>
+            <div onclick="showPage('notifications')" class="sidebar-item px-4 py-3 rounded-xl flex items-center gap-3 cursor-pointer text-slate-400 hover:bg-white/10">
+                <i class="fa-solid fa-bell w-5"></i><span class="text-sm">Notifications</span>
+            </div>
+            <div onclick="showPage('profile')" class="sidebar-item px-4 py-3 rounded-xl flex items-center gap-3 cursor-pointer text-slate-400 hover:bg-white/10">
+                <i class="fa-solid fa-user w-5"></i><span class="text-sm">Profile</span>
+            </div>
+            <div id="adminMenuItem" style="display: none;" onclick="showPage('admin')" class="sidebar-item px-4 py-3 rounded-xl flex items-center gap-3 cursor-pointer text-yellow-400 hover:bg-white/10">
+                <i class="fa-solid fa-crown w-5"></i><span class="text-sm">Admin Panel</span>
+            </div>
+        </nav>
+        
+        <div class="pt-5 mt-5 border-t border-white/10">
+            <div class="px-4 py-3 bg-white/5 rounded-xl mb-3">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-white font-bold text-sm" id="sidebarAvatar">U</div>
+                    <div>
+                        <p class="text-sm font-bold text-white" id="sidebarUsername">User</p>
+                        <p class="text-[9px] text-purple-400" id="sidebarRole">User</p>
+                    </div>
+                </div>
+                <p class="text-[8px] text-slate-500"><i class="fa-regular fa-id-card"></i> ID: <span id="sidebarUserId">-</span></p>
+            </div>
+            <button onclick="logout()" class="w-full px-4 py-3 bg-red-500/20 text-red-400 rounded-xl text-sm font-bold hover:bg-red-500 hover:text-white transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="md:ml-[260px] min-h-screen">
+        <!-- Top Navbar -->
+        <div class="sticky top-0 z-50 bg-black/80 backdrop-blur-xl border-b border-purple-500/30 px-4 md:px-6 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="menu-btn p-2 rounded-lg bg-white/10 md:hidden"><i class="fa-solid fa-bars text-white"></i></button>
+                <h1 class="text-lg font-bold text-white" id="pageTitle">Dashboard</h1>
+            </div>
+            <div class="flex items-center gap-3 md:gap-4">
+                <span id="dashboardClock" class="text-[10px] md:text-[11px] text-purple-400 bg-black/30 px-2 md:px-3 py-1 rounded-lg font-mono"></span>
+                <i class="fa-solid fa-bell text-slate-400 cursor-pointer hover:text-purple-400 transition" onclick="showNotificationsPanel()"></i>
+                <i class="fa-solid fa-gear text-slate-400 cursor-pointer hover:text-purple-400 transition" onclick="openSettings()"></i>
+            </div>
+        </div>
+        
+        <div class="p-4 md:p-6">
+            <!-- ==================== DASHBOARD PAGE ==================== -->
+            <div id="dashboardPage" class="page-content">
+                <div class="glass-card rounded-2xl p-5 mb-6">
+                    <div class="flex items-center gap-4">
+                        <div class="w-16 h-16 rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-2xl text-white font-bold" id="dashboardAvatar">U</div>
+                        <div>
+                            <h2 class="text-xl font-bold text-white">Welcome back, <span id="welcomeUser">User</span>! 👋</h2>
+                            <p class="text-slate-400 text-sm mt-1"><i class="fa-regular fa-id-card"></i> User ID: <span id="dashboardUserId">-</span> | Role: <span id="userRole" class="text-purple-400">User</span></p>
+                        </div>
+                    </div>
+                    <p class="text-slate-400 text-sm mt-3">System uptime: <span id="uptime">00:00:00</span></p>
+                </div>
+                
+                <!-- Stats -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="stat-card glass-card rounded-2xl p-4"><i class="fa-solid fa-microchip text-2xl text-purple-400 mb-2"></i><p class="text-2xl font-black text-white" id="statCpu">0%</p><p class="text-[10px] text-slate-500">CPU Usage</p><div class="upload-progress mt-2"><div id="cpuBar" class="upload-progress-bar"></div></div></div>
+                    <div class="stat-card glass-card rounded-2xl p-4"><i class="fa-solid fa-memory text-2xl text-indigo-400 mb-2"></i><p class="text-2xl font-black text-white" id="statRam">0%</p><p class="text-[10px] text-slate-500">RAM Usage</p><div class="upload-progress mt-2"><div id="ramBar" class="upload-progress-bar"></div></div></div>
+                    <div class="stat-card glass-card rounded-2xl p-4"><i class="fa-solid fa-robot text-2xl text-emerald-400 mb-2"></i><p class="text-2xl font-black text-white" id="statBots">0</p><p class="text-[10px] text-slate-500">Active Bots</p></div>
+                    <div class="stat-card glass-card rounded-2xl p-4 cursor-pointer" onclick="document.getElementById('botFileInput').click()"><i class="fa-solid fa-cloud-arrow-up text-2xl text-purple-400 mb-2"></i><p class="text-base font-black text-white">Deploy Bot</p><p class="text-[9px] text-slate-500">.py or .zip</p><div class="upload-progress mt-2"><div id="uploadProgress" class="upload-progress-bar"></div></div><input type="file" id="botFileInput" accept=".py,.zip" hidden></div>
+                </div>
+                
+                <!-- Quick Stats Row -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="glass-card rounded-2xl p-3 text-center"><p class="text-xl font-black text-white" id="totalBotsCount">0</p><p class="text-[9px] text-slate-500">Total Bots</p></div>
+                    <div class="glass-card rounded-2xl p-3 text-center"><p class="text-xl font-black text-white" id="runningBotsCount">0</p><p class="text-[9px] text-slate-500">Running</p></div>
+                    <div class="glass-card rounded-2xl p-3 text-center"><p class="text-xl font-black text-white" id="stoppedBotsCount">0</p><p class="text-[9px] text-slate-500">Stopped</p></div>
+                    <div class="glass-card rounded-2xl p-3 text-center"><p class="text-xl font-black text-white" id="storageUsed">0</p><p class="text-[9px] text-slate-500">KB Used</p></div>
+                </div>
+                
+                <!-- Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+                    <div class="glass-card rounded-2xl p-5"><h3 class="text-sm font-bold text-white mb-3"><i class="fa-solid fa-chart-line mr-2 text-purple-400"></i> Performance</h3><canvas id="perfChart" height="180"></canvas></div>
+                    <div class="glass-card rounded-2xl p-5"><h3 class="text-sm font-bold text-white mb-3"><i class="fa-solid fa-chart-pie mr-2 text-purple-400"></i> Bot Status</h3><canvas id="pieChart" height="180"></canvas></div>
+                </div>
+                
+                <!-- Recent Activity -->
+                <div class="glass-card rounded-2xl p-5"><div class="flex justify-between items-center mb-3"><h3 class="text-sm font-bold text-white"><i class="fa-solid fa-terminal mr-2 text-purple-400"></i> Recent Activity</h3><button onclick="clearActivityLog()" class="text-red-400 text-[10px] font-bold">CLEAR</button></div><div id="activityLog" class="h-48 overflow-y-auto font-mono text-[10px] space-y-1 custom-scroll"></div></div>
+            </div>
+            
+            <!-- ==================== BOTS PAGE ==================== -->
+            <div id="botsPage" class="page-content" style="display: none;">
+                <div class="flex flex-wrap gap-3 justify-between items-center mb-5">
+                    <div class="flex gap-2"><button onclick="startAllBots()" class="px-3 py-1.5 bg-emerald-600/20 text-emerald-400 rounded-lg text-[11px] font-bold"><i class="fa-solid fa-play mr-1"></i> Start All</button><button onclick="stopAllBots()" class="px-3 py-1.5 bg-red-600/20 text-red-400 rounded-lg text-[11px] font-bold"><i class="fa-solid fa-stop mr-1"></i> Stop All</button><button onclick="deleteAllBots()" class="px-3 py-1.5 bg-orange-600/20 text-orange-400 rounded-lg text-[11px] font-bold"><i class="fa-solid fa-trash mr-1"></i> Clear All</button><button onclick="cloneSelectedBot()" class="px-3 py-1.5 bg-blue-600/20 text-blue-400 rounded-lg text-[11px] font-bold"><i class="fa-solid fa-clone mr-1"></i> Clone</button></div>
+                    <div class="relative"><i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i><input type="text" id="searchBot" placeholder="Search bots..." class="pl-8 pr-3 py-1.5 bg-black/40 border border-purple-500/30 rounded-lg text-white text-sm w-48 md:w-64"></div>
+                </div>
+                <div id="botsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            </div>
+            
+            <!-- ==================== FILE MANAGER PAGE ==================== -->
+            <div id="filemanagerPage" class="page-content" style="display: none;">
+                <div class="glass-card rounded-2xl p-5">
+                    <div class="flex justify-between items-center mb-4"><h3 class="text-sm font-bold text-white"><i class="fa-solid fa-folder-open mr-2 text-purple-400"></i> My Files</h3><button onclick="createNewFile()" class="px-3 py-1.5 bg-emerald-600/20 text-emerald-400 rounded-lg text-[11px] font-bold"><i class="fa-solid fa-plus mr-1"></i> New File</button></div>
+                    <div id="fileManagerList" class="space-y-2"></div>
+                </div>
+                <div id="fileEditorModal" class="modal"><div class="glass-card rounded-2xl w-full max-w-3xl max-h-[80vh] flex flex-col m-3"><div class="p-4 border-b border-white/10 flex justify-between"><h3 class="font-bold text-white">Edit File: <span id="editFileName"></span></h3><button onclick="closeFileEditor()"><i class="fa-solid fa-xmark text-xl text-slate-400"></i></button></div><textarea id="fileEditor" class="flex-1 p-4 bg-black/60 text-green-400 font-mono text-sm resize-none outline-none"></textarea><div class="p-3 border-t border-white/10 flex justify-end gap-2"><button onclick="saveFileContent()" class="px-4 py-2 bg-purple-600 rounded-lg text-sm font-bold">Save</button><button onclick="closeFileEditor()" class="px-4 py-2 bg-slate-700 rounded-lg text-sm font-bold">Cancel</button></div></div></div>
+            </div>
+            
+            <!-- ==================== TEMPLATES PAGE ==================== -->
+            <div id="templatesPage" class="page-content" style="display: none;">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="glass-card rounded-2xl p-4 cursor-pointer hover:border-purple-500" onclick="useTemplate('webhook')"><i class="fa-solid fa-webhook text-2xl text-purple-400 mb-2"></i><h4 class="font-bold text-white">Webhook Bot</h4><p class="text-[10px] text-slate-400 mt-1">Discord/Telegram webhook bot</p></div>
+                    <div class="glass-card rounded-2xl p-4 cursor-pointer hover:border-purple-500" onclick="useTemplate('scraper')"><i class="fa-solid fa-spider text-2xl text-purple-400 mb-2"></i><h4 class="font-bold text-white">Web Scraper</h4><p class="text-[10px] text-slate-400 mt-1">BeautifulSoup scraper template</p></div>
+                    <div class="glass-card rounded-2xl p-4 cursor-pointer hover:border-purple-500" onclick="useTemplate('api')"><i class="fa-solid fa-api text-2xl text-purple-400 mb-2"></i><h4 class="font-bold text-white">API Bot</h4><p class="text-[10px] text-slate-400 mt-1">REST API calling bot</p></div>
+                    <div class="glass-card rounded-2xl p-4 cursor-pointer hover:border-purple-500" onclick="useTemplate('automation')"><i class="fa-solid fa-clock text-2xl text-purple-400 mb-2"></i><h4 class="font-bold text-white">Automation</h4><p class="text-[10px] text-slate-400 mt-1">Scheduled task bot</p></div>
+                    <div class="glass-card rounded-2xl p-4 cursor-pointer hover:border-purple-500" onclick="useTemplate('monitor')"><i class="fa-solid fa-chart-line text-2xl text-purple-400 mb-2"></i><h4 class="font-bold text-white">Monitor Bot</h4><p class="text-[10px] text-slate-400 mt-1">Website uptime monitor</p></div>
+                    <div class="glass-card rounded-2xl p-4 cursor-pointer hover:border-purple-500" onclick="useTemplate('telegram')"><i class="fa-brands fa-telegram text-2xl text-purple-400 mb-2"></i><h4 class="font-bold text-white">Telegram Bot</h4><p class="text-[10px] text-slate-400 mt-1">Telegram bot template</p></div>
+                </div>
+            </div>
+            
+            <!-- ==================== SCHEDULER PAGE ==================== -->
+            <div id="schedulerPage" class="page-content" style="display: none;">
+                <div class="glass-card rounded-2xl p-5"><div class="flex justify-between items-center mb-4"><h3 class="text-sm font-bold text-white"><i class="fa-solid fa-calendar-alt mr-2 text-purple-400"></i> Bot Scheduler</h3><button onclick="addSchedule()" class="px-3 py-1.5 bg-emerald-600/20 text-emerald-400 rounded-lg text-[11px] font-bold"><i class="fa-solid fa-plus mr-1"></i> Add Schedule</button></div><div id="schedulesList" class="space-y-2"></div></div>
+                <div id="scheduleModal" class="modal"><div class="glass-card rounded-2xl w-full max-w-md p-5"><h3 class="font-bold text-white mb-4">Add Schedule</h3><select id="scheduleBot" class="glow-input w-full p-2 rounded-lg text-white mb-3"><option value="">Select Bot</option></select><select id="scheduleAction" class="glow-input w-full p-2 rounded-lg text-white mb-3"><option value="start">Start Bot</option><option value="stop">Stop Bot</option></select><input type="time" id="scheduleTime" class="glow-input w-full p-2 rounded-lg text-white mb-3"><select id="scheduleRepeat" class="glow-input w-full p-2 rounded-lg text-white mb-3"><option value="once">Once</option><option value="daily">Daily</option><option value="weekly">Weekly</option></select><div class="flex gap-2"><button onclick="saveSchedule()" class="flex-1 py-2 bg-purple-600 rounded-lg text-white font-bold">Save</button><button onclick="closeScheduleModal()" class="flex-1 py-2 bg-slate-700 rounded-lg text-white font-bold">Cancel</button></div></div></div>
+            </div>
+            
+            <!-- ==================== ANALYTICS PAGE ==================== -->
+            <div id="analyticsPage" class="page-content" style="display: none;">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                    <div class="glass-card rounded-2xl p-5"><h3 class="text-sm font-bold text-white mb-3"><i class="fa-solid fa-chart-line mr-2 text-purple-400"></i> Bot Usage</h3><canvas id="usageChart" height="200"></canvas></div>
+                    <div class="glass-card rounded-2xl p-5"><h3 class="text-sm font-bold text-white mb-3"><i class="fa-solid fa-clock mr-2 text-purple-400"></i> Uptime Stats</h3><div id="uptimeStats" class="space-y-2"></div></div>
+                </div>
+                <div class="glass-card rounded-2xl p-5"><h3 class="text-sm font-bold text-white mb-3"><i class="fa-solid fa-table mr-2 text-purple-400"></i> Bot Performance</h3><div id="performanceTable"></div></div>
+            </div>
+            
+            <!-- ==================== FAVORITES PAGE ==================== -->
+            <div id="favoritesPage" class="page-content" style="display: none;">
+                <div class="glass-card rounded-2xl p-5">
+                    <h3 class="text-sm font-bold text-white mb-4"><i class="fa-solid fa-star text-yellow-500 mr-2"></i> Favorite Bots</h3>
+                    <div id="favoritesList" class="space-y-2"></div>
+                </div>
+            </div>
+            
+            <!-- ==================== API KEYS PAGE ==================== -->
+            <div id="apikeysPage" class="page-content" style="display: none;">
+                <div class="glass-card rounded-2xl p-5">
+                    <div class="flex justify-between items-center mb-4"><h3 class="text-sm font-bold text-white"><i class="fa-solid fa-key mr-2 text-purple-400"></i> API Keys</h3><button onclick="generateApiKey()" class="px-3 py-1.5 bg-emerald-600/20 text-emerald-400 rounded-lg text-[11px] font-bold"><i class="fa-solid fa-plus mr-1"></i> Generate New Key</button></div>
+                    <div id="apiKeysList" class="space-y-3"></div>
+                    <div class="mt-4 p-3 bg-white/5 rounded-lg"><p class="text-[10px] text-slate-400"><i class="fa-solid fa-info-circle mr-1"></i> Use these API keys to authenticate your bots. Keep them secure!</p></div>
+                </div>
+            </div>
+            
+            <!-- ==================== NOTES PAGE ==================== -->
+            <div id="notesPage" class="page-content" style="display: none;">
+                <div class="glass-card rounded-2xl p-5">
+                    <div class="flex justify-between items-center mb-4"><h3 class="text-sm font-bold text-white"><i class="fa-solid fa-note-sticky mr-2 text-purple-400"></i> My Notes</h3><button onclick="addNote()" class="px-3 py-1.5 bg-emerald-600/20 text-emerald-400 rounded-lg text-[11px] font-bold"><i class="fa-solid fa-plus mr-1"></i> Add Note</button></div>
+                    <div id="notesList" class="space-y-3"></div>
+                </div>
+                <div id="noteModal" class="modal"><div class="glass-card rounded-2xl w-full max-w-md p-5"><h3 class="font-bold text-white mb-4" id="noteModalTitle">Add Note</h3><input type="text" id="noteTitle" placeholder="Title" class="glow-input w-full p-2 rounded-lg text-white text-sm mb-3"><textarea id="noteContent" rows="4" placeholder="Write your note here..." class="glow-input w-full p-2 rounded-lg text-white text-sm"></textarea><div class="flex gap-2 mt-3"><button onclick="saveNote()" class="flex-1 py-2 bg-purple-600 rounded-lg text-white font-bold">Save</button><button onclick="closeNoteModal()" class="flex-1 py-2 bg-slate-700 rounded-lg text-white font-bold">Cancel</button></div></div></div>
+            </div>
+            
+            <!-- ==================== NOTIFICATIONS PAGE ==================== -->
+            <div id="notificationsPage" class="page-content" style="display: none;">
+                <div class="glass-card rounded-2xl p-5"><div class="flex justify-between items-center mb-4"><h3 class="text-sm font-bold text-white"><i class="fa-solid fa-bell mr-2 text-purple-400"></i> All Notifications</h3><button onclick="clearAllNotifications()" class="text-red-400 text-[11px] font-bold">Clear All</button></div><div id="notificationsList" class="space-y-2"></div></div>
+            </div>
+            
+            <!-- ==================== PROFILE PAGE (Custom Profile) ==================== -->
+            <div id="profilePage" class="page-content" style="display: none;">
+                <div class="glass-card rounded-2xl p-5 max-w-2xl mx-auto">
+                    <div class="text-center mb-6">
+                        <div class="avatar relative" onclick="changeAvatar()">
+                            <span id="profileAvatarText">U</span>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mt-3" id="profileUsername">User</h3>
+                        <p class="text-purple-400 text-sm"><i class="fa-regular fa-id-card"></i> ID: <span id="profileUserId">-</span></p>
+                    </div>
+                    <div class="space-y-4">
+                        <div><label class="text-[11px] font-bold text-purple-400 block mb-1">Display Name</label><input type="text" id="profileDisplayName" class="glow-input w-full p-2 rounded-lg text-white text-sm"></div>
+                        <div><label class="text-[11px] font-bold text-purple-400 block mb-1">Email</label><input type="email" id="profileEmailInput" class="glow-input w-full p-2 rounded-lg text-white text-sm"></div>
+                        <div><label class="text-[11px] font-bold text-purple-400 block mb-1">Bio</label><textarea id="profileBio" rows="3" class="glow-input w-full p-2 rounded-lg text-white text-sm" placeholder="Tell us about yourself..."></textarea></div>
+                        <div><label class="text-[11px] font-bold text-purple-400 block mb-1">Theme</label><select id="profileTheme" class="glow-input w-full p-2 rounded-lg text-white text-sm"><option value="dark">Dark</option><option value="light">Light</option><option value="purple">Purple</option></select></div>
+                        <div><label class="text-[11px] font-bold text-purple-400 block mb-1">Change Password</label><input type="password" id="profileNewPassword" placeholder="New password (leave empty to keep current)" class="glow-input w-full p-2 rounded-lg text-white text-sm"></div>
+                        <button onclick="saveProfile()" class="w-full py-2 bg-purple-600 rounded-lg text-white font-bold">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ==================== ADMIN PAGE ==================== -->
+            <div id="adminPage" class="page-content" style="display: none;">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="glass-card rounded-2xl p-4 text-center"><p class="text-2xl font-black text-white" id="adminTotalUsers">0</p><p class="text-[9px] text-slate-500">Total Users</p></div>
+                    <div class="glass-card rounded-2xl p-4 text-center"><p class="text-2xl font-black text-white" id="adminActiveUsers">0</p><p class="text-[9px] text-slate-500">Active Today</p></div>
+                    <div class="glass-card rounded-2xl p-4 text-center"><p class="text-2xl font-black text-white" id="adminTotalBots">0</p><p class="text-[9px] text-slate-500">Total Bots</p></div>
+                    <div class="glass-card rounded-2xl p-4 text-center"><p class="text-2xl font-black text-white" id="adminRunningBots">0</p><p class="text-[9px] text-slate-500">Running Bots</p></div>
+                </div>
+                
+                <div class="glass-card rounded-2xl p-5 mb-6"><h3 class="text-sm font-bold text-white mb-3"><i class="fa-solid fa-users mr-2 text-purple-400"></i> User Management</h3><div class="overflow-x-auto"><table class="w-full text-left text-xs"><thead class="border-b border-white/10"><tr class="text-purple-400"><th>User ID</th><th>Username</th><th>Email</th><th>Bots</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead><tbody id="adminUsersTable"></tbody></table></div></div>
+                
+                <div class="glass-card rounded-2xl p-5 mb-6"><h3 class="text-sm font-bold text-white mb-3"><i class="fa-solid fa-robot mr-2 text-purple-400"></i> User Bots Control</h3><div id="adminBotsControl" class="space-y-3 max-h-96 overflow-y-auto custom-scroll"></div></div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+                    <div class="glass-card rounded-2xl p-5"><h3 class="text-sm font-bold text-white mb-3"><i class="fa-solid fa-bullhorn mr-2 text-purple-400"></i> Global Announcement</h3><textarea id="announcementMsg" rows="3" class="glow-input w-full p-2 rounded-lg text-white text-sm" placeholder="Enter announcement message..."></textarea><button onclick="sendGlobalAnnouncement()" class="mt-3 px-4 py-2 bg-purple-600 rounded-lg text-white text-sm font-bold">Send to All Users</button></div>
+                    <div class="glass-card rounded-2xl p-5"><h3 class="text-sm font-bold text-white mb-3"><i class="fa-solid fa-chart-line mr-2 text-purple-400"></i> System Health</h3><canvas id="systemHealthChart" height="150"></canvas></div>
+                </div>
+                
+                <div class="flex flex-wrap gap-3"><button onclick="backupData()" class="px-4 py-2 bg-emerald-600/20 text-emerald-400 rounded-lg text-[11px] font-bold"><i class="fa-solid fa-download mr-1"></i> Backup DB</button><button onclick="restoreData()" class="px-4 py-2 bg-blue-600/20 text-blue-400 rounded-lg text-[11px] font-bold"><i class="fa-solid fa-upload mr-1"></i> Restore DB</button><button onclick="exportAllData()" class="px-4 py-2 bg-purple-600/20 text-purple-400 rounded-lg text-[11px] font-bold"><i class="fa-solid fa-file-export mr-1"></i> Export All</button><button onclick="clearAllData()" class="px-4 py-2 bg-red-600/20 text-red-400 rounded-lg text-[11px] font-bold"><i class="fa-solid fa-trash mr-1"></i> Clear All Data</button></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SETTINGS MODAL ==================== -->
+<div id="settingsModal" class="modal"><div class="glass-card rounded-2xl w-full max-w-md p-5"><div class="flex justify-between items-center mb-4"><h3 class="text-lg font-bold text-white"><i class="fa-solid fa-gear mr-2 text-purple-400"></i> Settings</h3><button onclick="closeSettingsModal()"><i class="fa-solid fa-xmark text-xl text-slate-400"></i></button></div><div class="space-y-4"><div class="flex justify-between items-center"><span class="text-sm text-slate-300">🔔 Notifications</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="notifToggle" class="sr-only peer" checked><div class="w-10 h-5 bg-slate-700 rounded-full peer peer-checked:bg-purple-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-5"></div></label></div><div class="flex justify-between items-center"><span class="text-sm text-slate-300">🚀 Auto-Start Bots</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="autoStartToggle" class="sr-only peer"><div class="w-10 h-5 bg-slate-700 rounded-full peer peer-checked:bg-purple-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-5"></div></label></div><button onclick="saveSettings()" class="w-full py-2 bg-purple-600 rounded-lg text-white font-bold text-sm">Save Settings</button></div></div></div>
+
+<script>
+    // ============ DATA STORAGE (Alag-alag user ka alag data) ============
+    let currentUser = null;
+    let bots = [];
+    let activityLogs = [];
+    let schedules = [];
+    let notifications = [];
+    let favorites = [];
+    let apiKeys = [];
+    let notes = [];
+    let perfChart = null;
+    let pieChart = null;
+    let usageChart = null;
+    let systemHealthChart = null;
+    let uptimeSeconds = 0;
+    let currentEditingFile = null;
+    let currentEditingNoteId = null;
+    
+    // ============ LOAD USER DATA (Separate for each user) ============
+    function loadUserData() {
+        if(!currentUser) return;
+        const prefix = `user_${currentUser.userId}_`;
+        bots = JSON.parse(localStorage.getItem(prefix + 'bots') || '[]');
+        activityLogs = JSON.parse(localStorage.getItem(prefix + 'logs') || '[]');
+        schedules = JSON.parse(localStorage.getItem(prefix + 'schedules') || '[]');
+        notifications = JSON.parse(localStorage.getItem(prefix + 'notifications') || '[]');
+        favorites = JSON.parse(localStorage.getItem(prefix + 'favorites') || '[]');
+        apiKeys = JSON.parse(localStorage.getItem(prefix + 'apikeys') || '[]');
+        notes = JSON.parse(localStorage.getItem(prefix + 'notes') || '[]');
+    }
+    
+    function saveUserData() {
+        if(!currentUser) return;
+        const prefix = `user_${currentUser.userId}_`;
+        localStorage.setItem(prefix + 'bots', JSON.stringify(bots));
+        localStorage.setItem(prefix + 'logs', JSON.stringify(activityLogs));
+        localStorage.setItem(prefix + 'schedules', JSON.stringify(schedules));
+        localStorage.setItem(prefix + 'notifications', JSON.stringify(notifications));
+        localStorage.setItem(prefix + 'favorites', JSON.stringify(favorites));
+        localStorage.setItem(prefix + 'apikeys', JSON.stringify(apiKeys));
+        localStorage.setItem(prefix + 'notes', JSON.stringify(notes));
+    }
+    
+    // ============ HELPER FUNCTIONS ============
+    function showToast(msg, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        const icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', info: 'fa-info-circle', warning: 'fa-triangle-exclamation' };
+        toast.innerHTML = `<i class="fa-solid ${icons[type]} mr-2 text-purple-400"></i> ${msg}`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+    
+    function addActivityLog(message, type = 'info') {
+        const time = new Date().toLocaleTimeString();
+        activityLogs.unshift({ time, message, type, timestamp: Date.now() });
+        if(activityLogs.length > 100) activityLogs.pop();
+        saveUserData();
+        updateActivityUI();
+    }
+    
+    function updateActivityUI() {
+        const container = document.getElementById('activityLog');
+        if(!container) return;
+        container.innerHTML = activityLogs.slice(0, 50).map(log => `<div class="flex gap-2"><span class="text-purple-400">[${log.time}]</span><span class="text-slate-400">${log.message}</span></div>`).join('') || '<div class="text-slate-500 text-center">No activity</div>';
+    }
+    
+    function clearActivityLog() { activityLogs = []; saveUserData(); updateActivityUI(); showToast('Log cleared', 'info'); }
+    function togglePassword(icon) { const input = icon.previousElementSibling; if(input.type === 'password') { input.type = 'text'; icon.classList.remove('fa-eye'); icon.classList.add('fa-eye-slash'); } else { input.type = 'password'; icon.classList.remove('fa-eye-slash'); icon.classList.add('fa-eye'); } }
+    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('open'); }
+    function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('open'); }
+    
+    function showPage(page) {
+        document.querySelectorAll('.page-content').forEach(p => p.style.display = 'none');
+        document.getElementById(page + 'Page').style.display = 'block';
+        document.getElementById('pageTitle').innerText = page.charAt(0).toUpperCase() + page.slice(1);
+        document.querySelectorAll('.sidebar-item').forEach(item => item.classList.remove('bg-purple-600/20', 'text-purple-400'));
+        if(event && event.currentTarget) event.currentTarget.classList.add('bg-purple-600/20', 'text-purple-400');
+        if(page === 'bots') renderBots();
+        if(page === 'filemanager') loadFileManager();
+        if(page === 'scheduler') loadSchedules();
+        if(page === 'notifications') loadNotifications();
+        if(page === 'analytics') loadAnalytics();
+        if(page === 'favorites') loadFavorites();
+        if(page === 'apikeys') loadApiKeys();
+        if(page === 'notes') loadNotes();
+        if(page === 'admin' && currentUser?.isAdmin) loadAdminPanel();
+        closeSidebar();
+    }
+    
+    // ============ BOT MANAGEMENT ============
+    function saveBots() { saveUserData(); updateStats(); }
+    
+    function renderBots() {
+        const searchTerm = document.getElementById('searchBot')?.value.toLowerCase() || '';
+        const filtered = bots.filter(b => b.name.toLowerCase().includes(searchTerm));
+        const container = document.getElementById('botsContainer');
+        if(!container) return;
+        if(filtered.length === 0) { container.innerHTML = `<div class="col-span-full text-center py-10"><i class="fa-solid fa-robot text-4xl text-slate-600 mb-2"></i><p class="text-slate-500">No bots deployed. Upload a .py or .zip file!</p></div>`; return; }
+        container.innerHTML = filtered.map(bot => `<div class="glass-card rounded-2xl p-4"><div class="flex justify-between items-start mb-3"><div class="flex items-center gap-2"><div class="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center"><i class="fa-solid fa-code text-xl text-purple-400"></i></div><i class="fa-regular fa-star favorite-star ${favorites.includes(bot.name) ? 'fa-solid text-yellow-500' : 'fa-regular text-slate-500'}" onclick="toggleFavorite('${bot.name}')"></i></div><span class="status-badge ${bot.status === 'running' ? 'status-running' : 'status-stopped'} text-[9px] font-bold uppercase">${bot.status}</span></div><h4 class="text-white font-bold text-base mb-2 truncate">${bot.name}</h4><div class="grid grid-cols-4 gap-2"><button onclick="runBot('${bot.name}')" class="p-1.5 bg-emerald-600/20 text-emerald-400 rounded-lg hover:bg-emerald-600 hover:text-white"><i class="fa-solid fa-play"></i></button><button onclick="stopBot('${bot.name}')" class="p-1.5 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600 hover:text-white"><i class="fa-solid fa-stop"></i></button><button onclick="viewLogs('${bot.name}')" class="p-1.5 bg-purple-600/20 text-purple-400 rounded-lg hover:bg-purple-600 hover:text-white"><i class="fa-solid fa-terminal"></i></button><button onclick="deleteBot('${bot.name}')" class="p-1.5 bg-orange-600/20 text-orange-400 rounded-lg hover:bg-orange-600 hover:text-white"><i class="fa-solid fa-trash"></i></button></div></div>`).join('');
+    }
+    
+    function toggleFavorite(botName) {
+        if(favorites.includes(botName)) {
+            favorites = favorites.filter(f => f !== botName);
+            showToast(`Removed ${botName} from favorites`, 'info');
+        } else {
+            favorites.push(botName);
+            showToast(`Added ${botName} to favorites`, 'success');
+        }
+        saveUserData();
+        renderBots();
+        loadFavorites();
+    }
+    
+    function runBot(name) { const bot = bots.find(b => b.name === name); if(bot) { bot.status = 'running'; saveBots(); addActivityLog(`🚀 Bot "${name}" started`, 'success'); showToast(`✅ ${name} started`, 'success'); renderBots(); simulateBotActivity(name); } }
+    function stopBot(name) { const bot = bots.find(b => b.name === name); if(bot) { bot.status = 'stopped'; saveBots(); addActivityLog(`🛑 Bot "${name}" stopped`, 'warning'); showToast(`⏹️ ${name} stopped`, 'warning'); renderBots(); } }
+    function deleteBot(name) { if(confirm(`Delete "${name}"?`)) { bots = bots.filter(b => b.name !== name); favorites = favorites.filter(f => f !== name); saveBots(); addActivityLog(`🗑️ Bot "${name}" deleted`, 'error'); showToast(`🗑️ ${name} deleted`, 'error'); renderBots(); loadFavorites(); } }
+    function startAllBots() { bots.forEach(b => b.status = 'running'); saveBots(); addActivityLog(`▶️ All bots started`, 'success'); showToast(`Started all bots`, 'success'); renderBots(); }
+    function stopAllBots() { bots.forEach(b => b.status = 'stopped'); saveBots(); addActivityLog(`⏹️ All bots stopped`, 'warning'); showToast(`Stopped all bots`, 'warning'); renderBots(); }
+    function deleteAllBots() { if(confirm('Delete ALL bots?')) { bots = []; favorites = []; saveBots(); addActivityLog(`💀 All bots destroyed`, 'error'); showToast(`Cleared all bots`, 'error'); renderBots(); loadFavorites(); } }
+    function cloneSelectedBot() { if(bots.length === 0) { showToast('No bots to clone', 'error'); return; } const lastBot = bots[bots.length-1]; const newName = lastBot.name + '_copy'; if(!bots.find(b => b.name === newName)) { bots.push({ ...lastBot, name: newName, status: 'stopped', createdAt: new Date().toISOString(), logs: [] }); saveBots(); addActivityLog(`📋 Cloned bot "${lastBot.name}" to "${newName}"`, 'success'); showToast(`Cloned to ${newName}`, 'success'); renderBots(); } else { showToast('Clone name exists', 'error'); } }
+    
+    function simulateBotActivity(botName) { const interval = setInterval(() => { const bot = bots.find(b => b.name === botName); if(!bot || bot.status !== 'running') { clearInterval(interval); return; } const msgs = ['Processing...', 'Heartbeat', 'Data received', 'Running']; addActivityLog(`[${botName}] ${msgs[Math.floor(Math.random() * msgs.length)]}`, 'info'); if(!bot.logs) bot.logs = []; bot.logs.unshift({ time: new Date().toLocaleTimeString(), msg: 'Activity' }); if(bot.logs.length > 50) bot.logs.pop(); saveBots(); }, 10000); }
+    
+    // ============ FILE UPLOAD ============
+    document.getElementById('botFileInput')?.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        if(file.name.endsWith('.zip')) {
+            showToast('Extracting ZIP...', 'info');
+            const JSZip = window.JSZip;
+            const zip = new JSZip();
+            const contents = await zip.loadAsync(file);
+            let uploadedCount = 0;
+            for (const [filename, zipEntry] of Object.entries(contents.files)) {
+                if(filename.endsWith('.py') && !zipEntry.dir) {
+                    const content = await zipEntry.async('string');
+                    const botName = filename.split('/').pop().replace('.py', '');
+                    if(!bots.find(b => b.name === botName)) {
+                        bots.push({ name: botName, status: 'stopped', code: content, createdAt: new Date().toISOString(), logs: [] });
+                        uploadedCount++;
+                    }
+                }
+            }
+            if(uploadedCount > 0) { saveBots(); addActivityLog(`📦 ZIP deployed: ${uploadedCount} bots`, 'success'); showToast(`✅ ${uploadedCount} bots deployed`, 'success'); renderBots(); }
+            else showToast('No .py files found', 'error');
+        } else if(file.name.endsWith('.py')) {
+            const reader = new FileReader();
+            reader.onprogress = (ev) => { if(ev.lengthComputable) document.getElementById('uploadProgress').style.width = (ev.loaded/ev.total*100)+'%'; };
+            reader.onload = (ev) => {
+                const botName = file.name.replace('.py', '');
+                if(bots.find(b => b.name === botName)) { showToast('Bot exists', 'error'); return; }
+                bots.push({ name: botName, status: 'stopped', code: ev.target.result, createdAt: new Date().toISOString(), logs: [] });
+                saveBots(); addActivityLog(`📤 Bot "${botName}" deployed`, 'success'); showToast(`✅ ${botName} deployed`, 'success'); renderBots();
+                setTimeout(() => document.getElementById('uploadProgress').style.width = '0%', 1000);
+            };
+            reader.readAsText(file);
+        } else showToast('Only .py or .zip', 'error');
+        e.target.value = '';
+    });
+    
+    // ============ FILE MANAGER ============
+    function loadFileManager() {
+        const container = document.getElementById('fileManagerList');
+        if(!container) return;
+        if(bots.length === 0) { container.innerHTML = '<div class="text-center py-10 text-slate-500">No files found. Deploy a bot first!</div>'; return; }
+        container.innerHTML = bots.map(bot => `<div class="glass-card rounded-xl p-3 flex justify-between items-center"><div class="flex items-center gap-3"><i class="fa-solid fa-file-code text-purple-400"></i><div><p class="text-white font-medium text-sm">${bot.name}.py</p><p class="text-[9px] text-slate-500">${bot.createdAt ? new Date(bot.createdAt).toLocaleDateString() : 'Unknown'}</p></div></div><div class="flex gap-2"><button onclick="editFile('${bot.name}')" class="px-3 py-1 bg-blue-600/20 text-blue-400 rounded-lg text-[10px]"><i class="fa-solid fa-edit"></i> Edit</button><button onclick="deleteFile('${bot.name}')" class="px-3 py-1 bg-red-600/20 text-red-400 rounded-lg text-[10px]"><i class="fa-solid fa-trash"></i> Delete</button></div></div>`).join('');
+    }
+    
+    function editFile(botName) {
+        currentEditingFile = botName;
+        const bot = bots.find(b => b.name === botName);
+        document.getElementById('editFileName').innerText = botName + '.py';
+        document.getElementById('fileEditor').value = bot.code || '# No code available';
+        document.getElementById('fileEditorModal').classList.add('active');
+    }
+    
+    function saveFileContent() {
+        const newContent = document.getElementById('fileEditor').value;
+        const bot = bots.find(b => b.name === currentEditingFile);
+        if(bot) { bot.code = newContent; saveBots(); addActivityLog(`📝 File "${currentEditingFile}.py" saved`, 'success'); showToast('File saved', 'success'); }
+        closeFileEditor();
+    }
+    
+    function deleteFile(botName) { if(confirm(`Delete "${botName}.py" permanently?`)) { bots = bots.filter(b => b.name !== botName); saveBots(); loadFileManager(); addActivityLog(`🗑️ File "${botName}.py" deleted`, 'error'); showToast('File deleted', 'error'); } }
+    function createNewFile() { const name = prompt('Enter bot name:'); if(name && !bots.find(b => b.name === name)) { bots.push({ name, status: 'stopped', code: '# Your bot code here\nprint("Hello World")', createdAt: new Date().toISOString(), logs: [] }); saveBots(); loadFileManager(); addActivityLog(`📄 New file "${name}.py" created`, 'success'); showToast('File created', 'success'); } else if(name) showToast('Bot name exists', 'error'); }
+    function closeFileEditor() { document.getElementById('fileEditorModal').classList.remove('active'); currentEditingFile = null; }
+    
+    // ============ TEMPLATES ============
+    function useTemplate(type) {
+        let code = '', name = '';
+        if(type === 'webhook') { name = 'webhook_bot'; code = `import requests\nimport json\n\nWEBHOOK_URL = "https://discord.com/api/webhooks/...\n\ndef send_webhook(message):\n    data = {"content": message}\n    requests.post(WEBHOOK_URL, json=data)\n\nsend_webhook("Bot is running!")`; }
+        else if(type === 'scraper') { name = 'scraper_bot'; code = `import requests\nfrom bs4 import BeautifulSoup\n\nurl = "https://example.com"\nresponse = requests.get(url)\nsoup = BeautifulSoup(response.text, 'html.parser')\nprint(soup.title.text)`; }
+        else if(type === 'api') { name = 'api_bot'; code = `import requests\n\nresponse = requests.get("https://api.github.com")\nprint(response.json())`; }
+        else if(type === 'automation') { name = 'automation_bot'; code = `import time\n\ndef task():\n    print("Task executed!")\n\nwhile True:\n    task()\n    time.sleep(60)`; }
+        else if(type === 'monitor') { name = 'monitor_bot'; code = `import requests\n\nurls = ["https://google.com"]\nfor url in urls:\n    try:\n        r = requests.get(url, timeout=5)\n        print(f"{url} is UP - Status: {r.status_code}")\n    except:\n        print(f"{url} is DOWN")`; }
+        else { name = 'telegram_bot'; code = `import requests\n\nTOKEN = "YOUR_BOT_TOKEN"\nurl = f"https://api.telegram.org/bot{TOKEN}/getMe"\nresponse = requests.get(url)\nprint(response.json())`; }
+        
+        if(!bots.find(b => b.name === name)) { bots.push({ name, status: 'stopped', code, createdAt: new Date().toISOString(), logs: [] }); saveBots(); addActivityLog(`📋 Template "${name}" deployed`, 'success'); showToast(`Template ${name} deployed`, 'success'); renderBots(); }
+        else { let i=1; while(bots.find(b => b.name === `${name}_${i}`)) i++; const newName = `${name}_${i}`; bots.push({ name: newName, status: 'stopped', code, createdAt: new Date().toISOString(), logs: [] }); saveBots(); addActivityLog(`📋 Template "${newName}" deployed`, 'success'); showToast(`Template ${newName} deployed`, 'success'); renderBots(); }
+    }
+    
+    // ============ FAVORITES ============
+    function loadFavorites() {
+        const container = document.getElementById('favoritesList');
+        if(!container) return;
+        const favBots = bots.filter(b => favorites.includes(b.name));
+        if(favBots.length === 0) { container.innerHTML = '<div class="text-center py-10 text-slate-500">No favorite bots. Click the star on any bot to add!</div>'; return; }
+        container.innerHTML = favBots.map(bot => `<div class="glass-card rounded-xl p-3 flex justify-between items-center"><div><p class="text-white font-medium">${bot.name}</p><p class="text-[9px] text-slate-500">${bot.status === 'running' ? 'Running' : 'Stopped'}</p></div><div class="flex gap-2"><button onclick="runBot('${bot.name}')" class="px-3 py-1 bg-emerald-600/20 text-emerald-400 rounded text-[10px]">Start</button><button onclick="toggleFavorite('${bot.name}')" class="px-3 py-1 bg-red-600/20 text-red-400 rounded text-[10px]">Remove</button></div></div>`).join('');
+    }
+    
+    // ============ API KEYS ============
+    function loadApiKeys() {
+        const container = document.getElementById('apiKeysList');
+        if(!container) return;
+        if(apiKeys.length === 0) { container.innerHTML = '<div class="text-center py-10 text-slate-500">No API keys generated yet</div>'; return; }
+        container.innerHTML = apiKeys.map((key, i) => `<div class="glass-card rounded-xl p-3"><div class="flex justify-between items-center mb-2"><p class="text-white font-medium">${key.name}</p><button onclick="deleteApiKey(${i})" class="text-red-400 text-[10px]"><i class="fa-solid fa-trash"></i></button></div><div class="api-key">${key.key}</div><p class="text-[8px] text-slate-500 mt-1">Created: ${new Date(key.createdAt).toLocaleString()}</p></div>`).join('');
+    }
+    
+    function generateApiKey() {
+        const name = prompt('Enter a name for this API key (e.g., "My Bot Key"):');
+        if(!name) return;
+        const newKey = 'zb_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 8);
+        apiKeys.push({ name, key: newKey, createdAt: Date.now() });
+        saveUserData();
+        loadApiKeys();
+        addActivityLog(`🔑 New API key "${name}" generated`, 'success');
+        showToast('API key generated', 'success');
+    }
+    
+    function deleteApiKey(index) { apiKeys.splice(index, 1); saveUserData(); loadApiKeys(); showToast('API key deleted', 'info'); }
+    
+    // ============ NOTES ============
+    function loadNotes() {
+        const container = document.getElementById('notesList');
+        if(!container) return;
+        if(notes.length === 0) { container.innerHTML = '<div class="text-center py-10 text-slate-500">No notes yet. Click "Add Note" to get started!</div>'; return; }
+        container.innerHTML = notes.map((note, i) => `<div class="glass-card rounded-xl p-3"><div class="flex justify-between items-start mb-2"><h4 class="text-white font-bold">${note.title}</h4><div class="flex gap-2"><button onclick="editNote(${i})" class="text-blue-400 text-[10px]"><i class="fa-solid fa-edit"></i></button><button onclick="deleteNote(${i})" class="text-red-400 text-[10px]"><i class="fa-solid fa-trash"></i></button></div></div><p class="text-slate-400 text-xs">${note.content.substring(0, 100)}${note.content.length > 100 ? '...' : ''}</p><p class="text-[8px] text-slate-500 mt-2">${new Date(note.createdAt).toLocaleString()}</p></div>`).join('');
+    }
+    
+    function addNote() { currentEditingNoteId = null; document.getElementById('noteModalTitle').innerText = 'Add Note'; document.getElementById('noteTitle').value = ''; document.getElementById('noteContent').value = ''; document.getElementById('noteModal').classList.add('active'); }
+    function editNote(index) { currentEditingNoteId = index; const note = notes[index]; document.getElementById('noteModalTitle').innerText = 'Edit Note'; document.getElementById('noteTitle').value = note.title; document.getElementById('noteContent').value = note.content; document.getElementById('noteModal').classList.add('active'); }
+    function saveNote() { const title = document.getElementById('noteTitle').value.trim(); const content = document.getElementById('noteContent').value.trim(); if(!title) { showToast('Title required', 'error'); return; } if(currentEditingNoteId !== null) { notes[currentEditingNoteId] = { ...notes[currentEditingNoteId], title, content, updatedAt: Date.now() }; addActivityLog(`📝 Note "${title}" updated`, 'info'); } else { notes.unshift({ title, content, createdAt: Date.now(), updatedAt: Date.now() }); addActivityLog(`📝 Note "${title}" created`, 'success'); } saveUserData(); loadNotes(); closeNoteModal(); showToast('Note saved', 'success'); }
+    function deleteNote(index) { if(confirm('Delete this note?')) { const title = notes[index].title; notes.splice(index, 1); saveUserData(); loadNotes(); addActivityLog(`🗑️ Note "${title}" deleted`, 'warning'); showToast('Note deleted', 'info'); } }
+    function closeNoteModal() { document.getElementById('noteModal').classList.remove('active'); currentEditingNoteId = null; }
+    
+    // ============ SCHEDULER ============
+    function loadSchedules() {
+        const container = document.getElementById('schedulesList');
+        if(!container) return;
+        if(schedules.length === 0) { container.innerHTML = '<div class="text-center py-10 text-slate-500">No schedules created</div>'; return; }
+        container.innerHTML = schedules.map((s, i) => `<div class="glass-card rounded-xl p-3 flex justify-between items-center"><div><p class="text-white font-medium text-sm">${s.bot} - ${s.action} at ${s.time}</p><p class="text-[9px] text-slate-500">${s.repeat}</p></div><button onclick="deleteSchedule(${i})" class="px-3 py-1 bg-red-600/20 text-red-400 rounded-lg text-[10px]">Delete</button></div>`).join('');
+        const botSelect = document.getElementById('scheduleBot'); if(botSelect) botSelect.innerHTML = '<option value="">Select Bot</option>' + bots.map(b => `<option value="${b.name}">${b.name}</option>`).join('');
+    }
+    
+    function addSchedule() { loadSchedules(); document.getElementById('scheduleModal').classList.add('active'); }
+    function closeScheduleModal() { document.getElementById('scheduleModal').classList.remove('active'); }
+    function saveSchedule() { const bot = document.getElementById('scheduleBot').value; const action = document.getElementById('scheduleAction').value; const time = document.getElementById('scheduleTime').value; const repeat = document.getElementById('scheduleRepeat').value; if(!bot || !time) { showToast('Fill all fields', 'error'); return; } schedules.push({ bot, action, time, repeat, createdAt: Date.now() }); saveUserData(); loadSchedules(); closeScheduleModal(); addActivityLog(`⏰ Schedule added: ${action} ${bot} at ${time}`, 'success'); showToast('Schedule saved', 'success'); }
+    function deleteSchedule(i) { schedules.splice(i,1); saveUserData(); loadSchedules(); addActivityLog(`🗑️ Schedule deleted`, 'warning'); showToast('Schedule deleted', 'error'); }
+    
+    // ============ NOTIFICATIONS ============
+    function loadNotifications() {
+        const container = document.getElementById('notificationsList');
+        if(!container) return;
+        if(notifications.length === 0) { container.innerHTML = '<div class="text-center py-10 text-slate-500">No notifications yet</div>'; return; }
+        container.innerHTML = notifications.map((n, i) => `<div class="glass-card rounded-xl p-3 flex justify-between items-center"><div><p class="text-white text-sm">${n.message}</p><p class="text-[9px] text-slate-500">${new Date(n.time).toLocaleString()}</p></div><button onclick="deleteNotification(${i})" class="text-red-400"><i class="fa-solid fa-trash"></i></button></div>`).join('');
+    }
+    
+    function addNotification(message) { notifications.unshift({ message, time: Date.now() }); if(notifications.length > 50) notifications.pop(); saveUserData(); loadNotifications(); }
+    function deleteNotification(i) { notifications.splice(i,1); saveUserData(); loadNotifications(); }
+    function clearAllNotifications() { notifications = []; saveUserData(); loadNotifications(); showToast('All notifications cleared', 'info'); }
+    function showNotificationsPanel() { showPage('notifications'); addActivityLog('Viewed notifications', 'info'); }
+    
+    // ============ ANALYTICS ============
+    function loadAnalytics() {
+        const total = bots.length, running = bots.filter(b => b.status === 'running').length, stopped = total - running;
+        document.getElementById('uptimeStats').innerHTML = `<div class="flex justify-between"><span class="text-slate-400">Total Bots:</span><span class="text-white font-bold">${total}</span></div><div class="flex justify-between"><span class="text-slate-400">Running:</span><span class="text-green-400">${running}</span></div><div class="flex justify-between"><span class="text-slate-400">Stopped:</span><span class="text-red-400">${stopped}</span></div><div class="flex justify-between"><span class="text-slate-400">Success Rate:</span><span class="text-purple-400">${running ? Math.round(running/total*100) : 0}%</span></div>`;
+        document.getElementById('performanceTable').innerHTML = `<table class="w-full text-left"><thead><tr class="text-purple-400"><th>Bot Name</th><th>Status</th><th>Created</th></tr></thead><tbody>${bots.map(b => `<tr class="border-b border-white/5"><td class="py-2">${b.name}</td><td><span class="status-badge ${b.status === 'running' ? 'status-running' : 'status-stopped'} text-[9px]">${b.status}</span></td><td class="text-slate-400 text-[10px]">${new Date(b.createdAt).toLocaleDateString()}</td></tr>`).join('')}</tbody></table>`;
+        if(usageChart) usageChart.destroy();
+        const ctx = document.getElementById('usageChart')?.getContext('2d');
+        if(ctx) usageChart = new Chart(ctx, { type: 'bar', data: { labels: bots.slice(0,7).map(b => b.name.substring(0,10)), datasets: [{ label: 'Uptime %', data: bots.slice(0,7).map(() => Math.floor(Math.random()*100)), backgroundColor: '#8b5cf6' }] }, options: { responsive: true, maintainAspectRatio: true } });
+    }
+    
+    // ============ ADMIN FUNCTIONS ============
+    function loadAdminPanel() {
+        const users = JSON.parse(localStorage.getItem('zb_all_users') || '[]');
+        let totalBots = 0;
+        let runningBots = 0;
+        users.forEach(user => {
+            const prefix = `user_${user.userId}_`;
+            const userBots = JSON.parse(localStorage.getItem(prefix + 'bots') || '[]');
+            totalBots += userBots.length;
+            runningBots += userBots.filter(b => b.status === 'running').length;
+        });
+        document.getElementById('adminTotalUsers').innerText = users.length;
+        document.getElementById('adminActiveUsers').innerText = users.filter(u => u.lastActive && (Date.now() - u.lastActive < 86400000)).length;
+        document.getElementById('adminTotalBots').innerText = totalBots;
+        document.getElementById('adminRunningBots').innerText = runningBots;
+        
+        document.getElementById('adminUsersTable').innerHTML = users.map(user => `<tr class="border-b border-white/5"><td class="py-2 text-[10px] font-mono">${user.userId}</td><td class="py-2">${user.username}</td><td class="text-slate-400 text-xs">${user.email || '-'}</td><td class="text-slate-400">${JSON.parse(localStorage.getItem(`user_${user.userId}_bots`) || '[]').length}</td><td>${user.isAdmin ? '<span class="text-yellow-500">Admin</span>' : 'User'}</td><td>${user.banned ? '<span class="text-red-400">Banned</span>' : '<span class="text-green-400">Active</span>'}</td><td class="flex gap-1"><button onclick="adminToggleBan('${user.userId}')" class="px-2 py-1 ${user.banned ? 'bg-green-600/20 text-green-400' : 'bg-orange-600/20 text-orange-400'} rounded text-[9px]">${user.banned ? 'Unban' : 'Ban'}</button><button onclick="adminDeleteUser('${user.userId}')" class="px-2 py-1 bg-red-600/20 text-red-400 rounded text-[9px]">Delete</button></td></tr>`).join('');
+        
+        // User Bots Control
+        const botsControlDiv = document.getElementById('adminBotsControl');
+        botsControlDiv.innerHTML = users.map(user => {
+            const userBots = JSON.parse(localStorage.getItem(`user_${user.userId}_bots`) || '[]');
+            if(userBots.length === 0) return `<div class="glass-card rounded-xl p-3"><p class="text-white font-bold">${user.username} (${user.userId})</p><p class="text-slate-500 text-xs">No bots</p></div>`;
+            return `<div class="glass-card rounded-xl p-3"><p class="text-white font-bold mb-2">${user.username} (${user.userId})</p><div class="space-y-2">${userBots.map(bot => `<div class="flex justify-between items-center p-2 bg-white/5 rounded-lg"><span class="text-sm">${bot.name}</span><span class="status-badge ${bot.status === 'running' ? 'status-running' : 'status-stopped'} text-[9px]">${bot.status}</span><div class="flex gap-1"><button onclick="adminControlBot('${user.userId}','${bot.name}','start')" class="px-2 py-1 bg-emerald-600/20 text-emerald-400 rounded text-[9px]">Start</button><button onclick="adminControlBot('${user.userId}','${bot.name}','stop')" class="px-2 py-1 bg-red-600/20 text-red-400 rounded text-[9px]">Stop</button></div></div>`).join('')}</div></div>`;
+        }).join('');
+        
+        if(systemHealthChart) systemHealthChart.destroy();
+        const ctx = document.getElementById('systemHealthChart')?.getContext('2d');
+        if(ctx) systemHealthChart = new Chart(ctx, { type: 'line', data: { labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], datasets: [{ label: 'CPU Load', data: [45,52,48,61,55,49,43], borderColor: '#8b5cf6', tension: 0.4 }] }, options: { responsive: true, maintainAspectRatio: true } });
+    }
+    
+    function adminToggleBan(userId) { let users = JSON.parse(localStorage.getItem('zb_all_users') || '[]'); const user = users.find(u => u.userId === userId); if(user) { user.banned = !user.banned; localStorage.setItem('zb_all_users', JSON.stringify(users)); loadAdminPanel(); addActivityLog(`${user.banned ? 'Banned' : 'Unbanned'} user ${user.username}`, 'warning'); showToast(`${user.username} ${user.banned ? 'banned' : 'unbanned'}`, 'info'); } }
+    
+    function adminDeleteUser(userId) { if(confirm('Delete this user permanently? All their bots and data will be lost!')) { let users = JSON.parse(localStorage.getItem('zb_all_users') || '[]'); const user = users.find(u => u.userId === userId); if(user && user.isAdmin && users.filter(u => u.isAdmin).length === 1) { showToast('Cannot delete the only admin!', 'error'); return; } users = users.filter(u => u.userId !== userId); localStorage.setItem('zb_all_users', JSON.stringify(users)); for(let i=0; i<localStorage.length; i++) { const key = localStorage.key(i); if(key && key.startsWith(`user_${userId}_`)) localStorage.removeItem(key); } loadAdminPanel(); addActivityLog(`Deleted user ${user?.username}`, 'error'); showToast('User deleted', 'error'); } }
+    
+    function adminControlBot(userId, botName, action) { const prefix = `user_${userId}_`; let userBots = JSON.parse(localStorage.getItem(prefix + 'bots') || '[]'); const botIndex = userBots.findIndex(b => b.name === botName); if(botIndex !== -1) { userBots[botIndex].status = action === 'start' ? 'running' : 'stopped'; localStorage.setItem(prefix + 'bots', JSON.stringify(userBots)); addActivityLog(`Admin ${action}ed bot "${botName}" for user ${userId}`, 'warning'); showToast(`Bot ${action}ed`, 'success'); loadAdminPanel(); } }
+    
+    function sendGlobalAnnouncement() { const msg = document.getElementById('announcementMsg').value; if(!msg) { showToast('Enter message', 'error'); return; } const users = JSON.parse(localStorage.getItem('zb_all_users') || '[]'); users.forEach(u => { const prefix = `user_${u.userId}_`; let userNotifs = JSON.parse(localStorage.getItem(prefix + 'notifications') || '[]'); userNotifs.unshift({ message: `📢 ADMIN: ${msg}`, time: Date.now() }); localStorage.setItem(prefix + 'notifications', JSON.stringify(userNotifs)); }); addActivityLog(`📢 Global announcement sent: "${msg}"`, 'success'); showToast('Announcement sent to all users', 'success'); document.getElementById('announcementMsg').value = ''; }
+    
+    function backupData() { const allData = {}; for(let i=0; i<localStorage.length; i++) { const key = localStorage.key(i); allData[key] = localStorage.getItem(key); } const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `zb_full_backup_${Date.now()}.json`; a.click(); showToast('Backup created', 'success'); addActivityLog('Full database backup created', 'success'); }
+    
+    function restoreData() { const input = document.createElement('input'); input.type = 'file'; input.accept = '.json'; input.onchange = (e) => { const reader = new FileReader(); reader.onload = (ev) => { try { const data = JSON.parse(ev.target.result); localStorage.clear(); for(const [key, value] of Object.entries(data)) localStorage.setItem(key, value); showToast('Restored! Reloading...', 'success'); addActivityLog('Database restored from backup', 'success'); setTimeout(() => location.reload(), 1500); } catch(err) { showToast('Invalid file', 'error'); } }; reader.readAsText(e.target.files[0]); }; input.click(); }
+    
+    function exportAllData() { const allData = { users: JSON.parse(localStorage.getItem('zb_all_users') || '[]') }; const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `zb_export_${Date.now()}.json`; a.click(); showToast('Data exported', 'success'); }
+    
+    function clearAllData() { if(confirm('⚠️ DELETE ALL DATA? This will remove ALL users, bots, and settings! Cannot undo!')) { localStorage.clear(); showToast('All data cleared', 'error'); setTimeout(() => location.reload(), 1500); } }
+    
+    // ============ PROFILE (Custom Profile with Avatar) ============
+    function changeAvatar() { const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'; const randomLetter = letters.charAt(Math.floor(Math.random() * letters.length)); if(currentUser) { currentUser.avatar = randomLetter; let users = JSON.parse(localStorage.getItem('zb_all_users') || '[]'); const idx = users.findIndex(u => u.userId === currentUser.userId); if(idx !== -1) { users[idx] = currentUser; localStorage.setItem('zb_all_users', JSON.stringify(users)); localStorage.setItem('zb_current_user', JSON.stringify(currentUser)); } updateProfileUI(); showToast('Avatar changed!', 'success'); } }
+    
+    function saveProfile() { if(currentUser) { currentUser.displayName = document.getElementById('profileDisplayName').value; currentUser.email = document.getElementById('profileEmailInput').value; currentUser.bio = document.getElementById('profileBio').value; currentUser.theme = document.getElementById('profileTheme').value; const newPassword = document.getElementById('profileNewPassword').value; if(newPassword) currentUser.password = newPassword; let users = JSON.parse(localStorage.getItem('zb_all_users') || '[]'); const idx = users.findIndex(u => u.userId === currentUser.userId); if(idx !== -1) { users[idx] = currentUser; localStorage.setItem('zb_all_users', JSON.stringify(users)); localStorage.setItem('zb_current_user', JSON.stringify(currentUser)); } updateProfileUI(); showToast('Profile saved', 'success'); addActivityLog('Profile updated', 'info'); } }
+    
+    function updateProfileUI() { if(!currentUser) return; const displayName = currentUser.displayName || currentUser.username; document.getElementById('welcomeUser').innerText = displayName; document.getElementById('sidebarUsername').innerText = displayName; document.getElementById('profileUsername').innerText = displayName; document.getElementById('profileUserId').innerText = currentUser.userId; document.getElementById('dashboardUserId').innerText = currentUser.userId; document.getElementById('sidebarUserId').innerText = currentUser.userId; document.getElementById('profileEmailInput').value = currentUser.email || ''; document.getElementById('profileBio').value = currentUser.bio || ''; document.getElementById('profileDisplayName').value = currentUser.displayName || currentUser.username; const avatarChar = (currentUser.avatar || currentUser.username.charAt(0).toUpperCase()); document.getElementById('sidebarAvatar').innerText = avatarChar; document.getElementById('dashboardAvatar').innerText = avatarChar; document.getElementById('profileAvatarText').innerText = avatarChar; }
+    
+    // ============ PERFORMANCE ============
+    function updatePerformance() {
+        const cpu = Math.floor(Math.random() * 60) + 10, ram = Math.floor(Math.random() * 50) + 20;
+        document.getElementById('statCpu').innerText = cpu + '%'; document.getElementById('statRam').innerText = ram + '%';
+        document.getElementById('cpuBar').style.width = cpu + '%'; document.getElementById('ramBar').style.width = ram + '%';
+        if(perfChart) { perfChart.data.datasets[0].data.push(cpu); perfChart.data.datasets[0].data.shift(); perfChart.data.datasets[1].data.push(ram); perfChart.data.datasets[1].data.shift(); perfChart.update(); }
+        const running = bots.filter(b => b.status === 'running').length, stopped = bots.length - running;
+        if(pieChart) { pieChart.data.datasets[0].data = [running, stopped]; pieChart.update(); }
+    }
+    
+    function updateStats() {
+        document.getElementById('totalBotsCount').innerText = bots.length;
+        document.getElementById('runningBotsCount').innerText = bots.filter(b => b.status === 'running').length;
+        document.getElementById('stoppedBotsCount').innerText = bots.filter(b => b.status === 'stopped').length;
+        document.getElementById('storageUsed').innerText = (JSON.stringify(localStorage).length / 1024).toFixed(1);
+        document.getElementById('statBots').innerText = bots.filter(b => b.status === 'running').length;
+    }
+    
+    function initCharts() {
+        const perfCtx = document.getElementById('perfChart')?.getContext('2d');
+        if(perfCtx) perfChart = new Chart(perfCtx, { type: 'line', data: { labels: Array(20).fill(''), datasets: [{ label: 'CPU', data: Array(20).fill(0), borderColor: '#8b5cf6', tension: 0.4, fill: true, backgroundColor: 'rgba(139,92,246,0.1)', pointRadius: 0 }, { label: 'RAM', data: Array(20).fill(0), borderColor: '#06b6d4', tension: 0.4, fill: true, backgroundColor: 'rgba(6,182,212,0.1)', pointRadius: 0 }] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: '#94a3b8', font: { size: 10 } } } }, scales: { y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }, x: { ticks: { display: false } } } } });
+        const pieCtx = document.getElementById('pieChart')?.getContext('2d');
+        if(pieCtx) pieChart = new Chart(pieCtx, { type: 'doughnut', data: { labels: ['Running', 'Stopped'], datasets: [{ data: [0, 0], backgroundColor: ['#10b981', '#ef4444'] }] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: '#94a3b8' } } } } });
+    }
+    
+    // ============ SETTINGS ============
+    function openSettings() { document.getElementById('settingsModal').classList.add('active'); }
+    function closeSettingsModal() { document.getElementById('settingsModal').classList.remove('active'); }
+    function saveSettings() { const settings = { notifications: document.getElementById('notifToggle').checked, autoStart: document.getElementById('autoStartToggle').checked }; localStorage.setItem('zb_settings', JSON.stringify(settings)); if(settings.autoStart) setTimeout(() => startAllBots(), 2000); showToast('Settings saved', 'success'); closeSettingsModal(); }
+    
+    // ============ AUTH ============
+    function showLogin() { document.getElementById('loginPage').style.display = 'flex'; document.getElementById('signupPage').style.display = 'none'; document.getElementById('dashboard').style.display = 'none'; }
+    function showSignup() { document.getElementById('loginPage').style.display = 'none'; document.getElementById('signupPage').style.display = 'flex'; document.getElementById('dashboard').style.display = 'none'; }
+    
+    function showDashboard() {
+        document.getElementById('loginPage').style.display = 'none';
+        document.getElementById('signupPage').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'block';
+        updateProfileUI();
+        document.getElementById('sidebarRole').innerText = currentUser.isAdmin ? 'Admin' : 'User';
+        document.getElementById('userRole').innerText = currentUser.isAdmin ? 'Admin' : 'User';
+        document.getElementById('adminMenuItem').style.display = currentUser.isAdmin ? 'flex' : 'none';
+        renderBots();
+        updateActivityUI();
+        updateStats();
+        showPage('dashboard');
+    }
+    
+    function logout() { currentUser = null; localStorage.removeItem('zb_current_user'); showLogin(); showToast('Logged out', 'info'); }
+    
+    // ============ LOGS VIEW ============
+    function viewLogs(botName) { const bot = bots.find(b => b.name === botName); const logs = bot?.logs?.map(l => `[${l.time}] ${l.msg}`).join('\n') || 'No logs'; alert(`Logs for ${botName}:\n\n${logs}`); }
+    
+    // ============ INIT ============
+    setInterval(() => { const clock = document.getElementById('dashboardClock'); if(clock) clock.innerText = new Date().toLocaleTimeString(); }, 1000);
+    setInterval(() => { uptimeSeconds++; const h = Math.floor(uptimeSeconds/3600), m = Math.floor((uptimeSeconds%3600)/60), s = uptimeSeconds%60; document.getElementById('uptime').innerText = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`; }, 1000);
+    
+    document.getElementById('signupPassword')?.addEventListener('input', function() { let s = 0; if(this.value.length >= 6) s++; if(this.value.match(/[a-z]/) && this.value.match(/[A-Z]/)) s++; if(this.value.match(/[0-9]/)) s++; if(this.value.match(/[^a-zA-Z0-9]/)) s++; ['strength1','strength2','strength3','strength4'].forEach((id,i) => { const el = document.getElementById(id); if(i < s) el.style.background = ['#ef4444','#f59e0b','#eab308','#10b981'][i]; else el.style.background = '#334155'; }); });
+    
+    document.getElementById('loginForm')?.addEventListener('submit', (e) => { e.preventDefault(); const users = JSON.parse(localStorage.getItem('zb_all_users') || '[]'); const user = users.find(u => u.username === document.getElementById('loginUsername').value && u.password === document.getElementById('loginPassword').value); if(user && !user.banned) { currentUser = user; currentUser.lastActive = Date.now(); const idx = users.findIndex(u => u.userId === user.userId); if(idx !== -1) { users[idx] = currentUser; localStorage.setItem('zb_all_users', JSON.stringify(users)); } localStorage.setItem('zb_current_user', JSON.stringify(currentUser)); loadUserData(); showDashboard(); addActivityLog(`✅ Logged in as ${user.username}`, 'success'); } else if(user?.banned) { document.getElementById('loginError').innerText = '❌ Account is banned'; document.getElementById('loginError').classList.remove('hidden'); setTimeout(() => document.getElementById('loginError').classList.add('hidden'), 3000); } else { document.getElementById('loginError').innerText = '❌ Invalid credentials'; document.getElementById('loginError').classList.remove('hidden'); setTimeout(() => document.getElementById('loginError').classList.add('hidden'), 3000); } });
+    
+    document.getElementById('signupFormElement')?.addEventListener('submit', (e) => { e.preventDefault(); const username = document.getElementById('signupUsername').value.trim(); const email = document.getElementById('signupEmail').value.trim(); const displayName = document.getElementById('signupDisplayName').value.trim(); const password = document.getElementById('signupPassword').value; const confirm = document.getElementById('signupConfirm').value; if(password !== confirm) { showError('Passwords do not match'); return; } if(password.length < 6) { showError('Password too short'); return; } const users = JSON.parse(localStorage.getItem('zb_all_users') || '[]'); if(users.find(u => u.username === username)) { showError('Username exists'); return; } const userId = 'USR_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8).toUpperCase(); users.push({ userId, username, email, displayName: displayName || username, password, isAdmin: users.length === 0, createdAt: Date.now(), lastActive: Date.now(), bio: '', theme: 'dark', avatar: username.charAt(0).toUpperCase(), banned: false }); localStorage.setItem('zb_all_users', JSON.stringify(users)); document.getElementById('signupSuccess').innerText = '✅ Account created! Redirecting to login...'; document.getElementById('signupSuccess').classList.remove('hidden'); setTimeout(() => showLogin(), 2000); function showError(msg) { const el = document.getElementById('signupError'); el.innerText = '❌ ' + msg; el.classList.remove('hidden'); setTimeout(() => el.classList.add('hidden'), 3000); } });
+    
+    document.getElementById('searchBot')?.addEventListener('input', () => renderBots());
+    
+    function init() { initCharts(); setInterval(updatePerformance, 3000); const stored = JSON.parse(localStorage.getItem('zb_current_user') || 'null'); if(stored) { currentUser = stored; loadUserData(); showDashboard(); } else { const users = JSON.parse(localStorage.getItem('zb_all_users') || '[]'); if(users.length === 0) { const defaultUserId = 'USR_ADMIN_' + Date.now(); users.push({ userId: defaultUserId, username: 'admin', email: 'admin@zb.com', displayName: 'Admin', password: 'admin123', isAdmin: true, createdAt: Date.now(), lastActive: Date.now(), bio: 'System Administrator', theme: 'dark', avatar: 'A', banned: false }); localStorage.setItem('zb_all_users', JSON.stringify(users)); } showLogin(); } }
+    init();
+</script>
+</body>
+</html>
